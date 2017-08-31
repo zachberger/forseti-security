@@ -41,3 +41,6 @@ htmlcov/
 
 run_server.sh
 run_client.sh
+
+.env
+*.env
