@@ -28,7 +28,7 @@ services:
       - ${GCLOUD_CREDS}:/root/.config
     command: tail -f /dev/null
   cloudsql-proxy:
-    image: gcr.io/cloudsql-docker/gce-proxy:1.10
+    image: gcr.io/cloudsql-docker/gce-proxy:${PROXY_IMG_VERSION}
     volumes:
       - /cloudsql:/cloudsql
       - ${FORSETI_KEY}:/config
