@@ -367,6 +367,26 @@ def define_explainer_parser(parent):
         help='Expand groups to their members')
 
 
+def define_iamql_parser(parent):
+    """Define the IAMQL service parser.
+
+    Args:
+        parent (argparser): Parent parser to hook into.
+    """
+    service_parser = parent.add_parser('iamql', help='iamql service')
+    action_subparser = service_parser.add_subparsers(
+        title='action',
+        dest='action')
+
+    query_model_parser = action_subparser.add_parser(
+        'query',
+        help='Perform a query operation')
+    query_model_parser.add_argument(
+        'query_string',
+        type=str,
+        help='Query to perform')
+
+
 def read_env(var_key, default):
     """Read an environment variable with a default value.
 
@@ -420,6 +440,8 @@ def create_parser(parser_cls):
     define_explainer_parser(service_subparsers)
     define_playground_parser(service_subparsers)
     define_inventory_parser(service_subparsers)
+    define_iamql_parser(service_subparsers)
+
     return main_parser
 
 
@@ -494,6 +516,27 @@ def run_inventory(client, config, output):
         'list': do_list_inventory,
         'get': do_get_inventory,
         'delete': do_delete_inventory}
+
+    actions[config.action]()
+
+
+def run_iamql(client, config, output):
+    """Run IAMQL commands.
+        Args:
+            client (iam_client.ClientComposition): client to use for requests.
+            config (object): argparser namespace to use.
+            output (Output): output writer to use.
+    """
+
+    client = client.iamql
+
+    def do_query():
+        """Perform query operations."""
+
+        pass
+
+    actions = {
+        'query': do_query}
 
     actions[config.action]()
 
@@ -697,6 +740,7 @@ SERVICES = {
     'explainer': run_explainer,
     'playground': run_playground,
     'inventory': run_inventory,
+    'iamql': run_iamql,
     }
 
 

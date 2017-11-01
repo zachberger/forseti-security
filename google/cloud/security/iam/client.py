@@ -18,6 +18,9 @@ import binascii
 import os
 import grpc
 
+
+from google.cloud.security.iam.iamql import iamql_pb2
+from google.cloud.security.iam.iamql import iamql_pb2_grpc
 from google.cloud.security.iam.explain import explain_pb2
 from google.cloud.security.iam.explain import explain_pb2_grpc
 from google.cloud.security.iam.playground import playground_pb2_grpc
@@ -62,6 +65,27 @@ class IAMClient(object):
     def metadata(self):
         """Create default metadata for gRPC call."""
         return [('handle', self.config.handle())]
+
+
+class IamQLClient(IAMClient):
+    """IAMQL service allows the client to query arbitrarily."""
+
+    def __init__(self, config):
+        super(IamQLClient, self).__init__(config)
+        self.stub = iamql_pb2_grpc.IamqlStub(config['channel'])
+
+    def is_available(self):
+        """Checks if the 'IAMQL' service is available by performing a ping.
+        """
+
+        data = binascii.hexlify(os.urandom(16))
+        echo = self.stub.Ping(iamql_pb2.PingRequest(data=data)).data
+        return echo == data
+
+    def query(self, request):
+        """Queries the data model."""
+
+        return self.stub.QueryString(request, metadata=self.metadata())
 
 
 class InventoryClient(IAMClient):
@@ -429,8 +453,14 @@ class ClientComposition(object):
         self.explain = ExplainClient(self.config)
         self.playground = PlaygroundClient(self.config)
         self.inventory = InventoryClient(self.config)
+        self.iamql = IamQLClient(self.config)
 
-        self.clients = [self.explain, self.playground, self.inventory]
+        self.clients = [
+            self.explain,
+            self.playground,
+            self.inventory,
+            self.iamql]
+
         if not all([c.is_available() for c in self.clients]):
             raise Exception('gRPC connected but services not registered')
 
