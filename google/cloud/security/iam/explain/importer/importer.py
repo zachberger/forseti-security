@@ -949,7 +949,7 @@ class InventoryImporter(object):
 
         type_name = self._type_name(resource)
         parent, full_res_name = self._get_parent(resource)
-        full_resource_name = '{}/{}'.format(
+        full_resource_name = '{}/{}/'.format(
             full_res_name,
             type_name)
         return parent, full_resource_name, type_name
