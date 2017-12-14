@@ -543,7 +543,7 @@ def run_iamql(client, config, output):
                 else:
                     value = column.n
                 d[column.name] = value
-            print d
+            print json.dumps(d)
 
     actions = {
         'query': do_query}
