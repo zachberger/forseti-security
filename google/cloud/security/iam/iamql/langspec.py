@@ -246,12 +246,36 @@ class Variable(dict):
 
 
 class QueryContext(object):
-    def __init__(self, compilation_context, query_node):
+    def __init__(self, compilation_context):
         self._variables = {}
+        self._entities = []
+        self._join_clauses = []
+        self._conditions = []
+        self._artefact = None
 
     @property
     def variables(self):
         return self._variables
+
+    @property
+    def entities(self):
+        return self._entities
+
+    @property
+    def join_clauses(self):
+        return self._join_clauses
+
+    @property
+    def conditions(self):
+        return self._conditions
+
+    @property
+    def artefact(self):
+        return self._artefact
+
+    @artefact.setter
+    def artefact(self, value):
+        self._artefact = value
 
 
 class CompilationContext(object):
@@ -265,11 +289,14 @@ class CompilationContext(object):
 
         self.queries = {}
         self.cur_query = None
-        self.variables = {}
-        self.entities = []
-        self.join_clauses = []
-        self.conditions = []
-        self.artefact = None
+
+    @property
+    def query(self):
+        return self.cur_query
+
+    @property
+    def artefact(self):
+        return self.query.artefact
 
     def get_table_by_entity(self, entity):
         type_mapping = {
@@ -302,20 +329,22 @@ class CompilationContext(object):
         return type_mapping[entity]
 
     def on_enter_query(self, query):
-        pass
+        self.cur_query = QueryContext(self)
 
     def on_leave_query(self, query, artefacts):
-        qry = self.session.query(*self.entities)
-        for clause in self.join_clauses:
+        qry = self.session.query(*self.query.entities)
+        for clause in self.query.join_clauses:
             qry = qry.filter(clause)
-        for condition in self.conditions:
+        for condition in self.query.conditions:
             qry = qry.filter(condition)
-        self.artefact = qry.distinct()
+
+        self.query.artefact = qry.distinct()
+        self.queries[query.name] = self.query
 
     def on_enter_projection(self, projection):
         for identifier in projection.entities:
-            variable = self.variables[identifier]
-            self.entities.append(variable.table)
+            variable = self.query.variables[identifier]
+            self.query.entities.append(variable.table)
 
     def on_leave_projection(self, projection, artefacts):
         pass
@@ -328,8 +357,8 @@ class CompilationContext(object):
         table = aliased(table_class,
                         name=ident)
         if constraint_func is not None:
-            self.conditions.append(constraint_func(table))
-        self.variables[ident] = Variable({'identifier': ident,
+            self.query.conditions.append(constraint_func(table))
+        self.query.variables[ident] = Variable({'identifier': ident,
                                           'entity': entity,
                                           'table': table})
 
@@ -343,13 +372,13 @@ class CompilationContext(object):
         pass
 
     def on_enter_join(self, join):
-        obj = self.variables[join.object]
+        obj = self.query.variables[join.object]
         obj_type = obj.entity
         for join_spec in self.allowed_joins[obj_type]:
             relation, arglist, generator = join_spec
             if relation == join.relation:
                 for arg_pos, arg_type in enumerate(arglist):
-                    var = self.variables[join.arglist[arg_pos]]
+                    var = self.query.variables[join.arglist[arg_pos]]
                     if isinstance(arg_type, list):
                         if var.entity not in arg_type:
                             raise TypeError(
@@ -361,11 +390,11 @@ class CompilationContext(object):
                                 'Relation: {}, expected: {}, actual: {}'
                                 .format(relation, arg_type, var.entity))
 
-                self.join_clauses.append(
+                self.query.join_clauses.append(
                     generator(self.data_access,
                               obj,
                               *map(lambda ident:
-                                   self.variables[ident], join.arglist)))
+                                   self.query.variables[ident], join.arglist)))
                 return
         raise Exception('Undefined join relationship: {}'.format(join))
 
@@ -373,10 +402,10 @@ class CompilationContext(object):
         pass
 
     def on_leave_unsafe_join(self, join, artefacts):
-        self.conditions.append(artefacts[0] == artefacts[1])
+        self.query.conditions.append(artefacts[0] == artefacts[1])
 
     def on_leave_unsafe_jointarget(self, target, artefacts):
-        variable = self.variables[target.name]
+        variable = self.query.variables[target.name]
         attribute_ref = target.attribute
         return getattr(variable['table'], attribute_ref.name)
 
@@ -402,7 +431,7 @@ class CompilationContext(object):
         return op_functions[operation](literal)
 
     def on_leave_attribute(self, attribute, artefacts):
-        variable = self.variables[attribute.entity_def.identifier]
+        variable = self.query.variables[attribute.entity_def.identifier]
         return getattr(variable['table'], attribute.name)
 
     def on_leave_scalar(self, scalar, artefacts):
@@ -410,7 +439,7 @@ class CompilationContext(object):
 
     def on_leave_entityfilter(self, entity_filter, artefacts):
         for artefact in artefacts:
-            self.conditions.append(artefact)
+            self.query.conditions.append(artefact)
 
     def on_leave_not(self, operator, artefacts):
         return not_(*artefacts)
@@ -496,7 +525,7 @@ class QueryCompiler(object):
         return artefact
 
     def print_query(self, artefact):
-        print self.artefact.statement.compile(
+        print artefact.statement.compile(
             dialect=mysql.dialect(),
             compile_kwargs={"literal_binds": True})
 
