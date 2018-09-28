@@ -110,9 +110,11 @@ class ForsetiServerInstaller(ForsetiInstaller):
             # Create firewall rules.
             self.create_firewall_rules()
             self.wait_until_vm_initialized(instance_name)
+            print('trying to delete rules that do not exist')
+
 
             # Delete firewall rules.
-            self.delete_firewall_rules()
+            #self.delete_firewall_rules()
 
         return success, deployment_name
 
