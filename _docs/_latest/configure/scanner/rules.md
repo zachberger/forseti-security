@@ -475,7 +475,7 @@ rules:
   * **Example values**: `bigquery-json.googleapis.com`, `logging.googleapis.com`
 
 
-## External Project Access rules
+## External Project Access rules (Beta version)
 
 ### Rule definitions
 ```yaml

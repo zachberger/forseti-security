@@ -76,7 +76,7 @@ For examples of how to define scanner rules for Enabled APIs, see the
 [`enabled_apis_rules.yaml`](https://github.com/GoogleCloudPlatform/forseti-security/blob/stable/rules/enabled_apis_rules.yaml)
 rule file.
 
-## External Project Access Scanner
+## External Project Access Scanner (Beta version)
 
 The External Project Access Scanner mitigates data exfiltration by identifying users who have access to projects outside of your organization or folder.
 
